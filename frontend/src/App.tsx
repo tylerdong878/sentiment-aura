@@ -11,7 +11,7 @@ function TranscriptDisplay() {
   const transcript = useAuraStore((s) => s.transcript);
   const interim = useAuraStore((s) => s.interimTranscript);
   return (
-    <div style={{ position: 'absolute', top: 16, left: 16, right: 16, maxHeight: 180, overflowY: 'auto', background: 'rgba(255,255,255,0.08)', padding: 12, borderRadius: 12, backdropFilter: 'blur(6px)' }}>
+    <div style={{ position: 'absolute', top: 16, left: 16, right: 16, maxHeight: 180, overflowY: 'auto', background: 'rgba(255,255,255,0.08)', padding: 12, borderRadius: 12, backdropFilter: 'blur(6px)', zIndex: 2 }}>
       {transcript.map((line, idx) => (
         <div key={idx} style={{ color: 'white', opacity: 0.9, marginBottom: 4 }}>{line}</div>
       ))}
@@ -27,7 +27,7 @@ function TranscriptDisplay() {
 function KeywordCloud() {
   const keywords = useAuraStore((s) => s.keywords);
   return (
-    <div style={{ position: 'absolute', bottom: 80, left: 16, right: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+    <div style={{ position: 'absolute', bottom: 80, left: 16, right: 16, display: 'flex', gap: 8, flexWrap: 'wrap', zIndex: 2 }}>
       <AnimatePresence>
         {keywords.map((kw) => (
           <motion.span
@@ -105,7 +105,7 @@ function ControlBar() {
   }
 
   return (
-    <div style={{ position: 'absolute', bottom: 16, left: 16, right: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <div style={{ position: 'absolute', bottom: 16, left: 16, right: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 2 }}>
       <button
         onClick={() => {
           if (!recording) {
@@ -157,11 +157,42 @@ function AuraOverlay() {
 function StatusBar() {
   const deepgramConnected = useAuraStore((s) => s.deepgramConnected);
   const lastAnalysisAt = useAuraStore((s) => s.lastAnalysisAt);
+  const vizMode = useAuraStore((s) => s.vizMode);
+  const setVizMode = useAuraStore((s) => s.setVizMode);
+  const palette = useAuraStore((s) => s.palette);
+  const setPalette = useAuraStore((s) => s.setPalette);
   const label = deepgramConnected ? 'Deepgram: connected' : 'Deepgram: idle';
   const last = lastAnalysisAt ? ` | Last analysis: ${new Date(lastAnalysisAt).toLocaleTimeString()}` : '';
   return (
-    <div style={{ position: 'absolute', top: 16, left: 16, padding: '6px 10px', borderRadius: 999, background: 'rgba(0,0,0,0.25)', color: 'white', fontSize: 12 }}>
-      {label}{last}
+    <div style={{ position: 'absolute', top: 48, right: 16, display: 'flex', gap: 8, alignItems: 'center', zIndex: 3 }}>
+      <div style={{ padding: '6px 10px', borderRadius: 999, background: 'rgba(0,0,0,0.35)', color: 'white', fontSize: 12 }}>
+        {label}{last}
+      </div>
+      <select
+        value={vizMode}
+        onChange={(e) => setVizMode(e.target.value as any)}
+        style={{ background: 'rgba(0,0,0,0.35)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, padding: '6px 8px' }}
+      >
+        <option value="particles">Particles</option>
+        <option value="ribbons">Ribbons</option>
+        <option value="nebula">Nebula</option>
+        <option value="comets">Comets</option>
+        <option value="charcoal">Charcoal</option>
+        <option value="flames">Flames</option>
+        <option value="stars">Stars</option>
+      </select>
+      <select
+        value={palette}
+        onChange={(e) => setPalette(e.target.value as any)}
+        style={{ background: 'rgba(0,0,0,0.35)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, padding: '6px 8px' }}
+      >
+        <option value="auto">Auto</option>
+        <option value="warm">Warm</option>
+        <option value="cool">Cool</option>
+        <option value="pastel">Pastel</option>
+        <option value="monochrome">Monochrome</option>
+        <option value="autumn">Autumn</option>
+      </select>
     </div>
   );
 }

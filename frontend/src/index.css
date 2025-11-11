@@ -23,6 +23,11 @@ body {
   min-width: 320px;
   min-height: 100vh;
   background: linear-gradient(180deg, #0b1020 0%, #0a0d18 100%);
+  overflow: hidden; /* prevent scrollbars so canvas can cover full viewport */
+}
+
+html, body, #root {
+  height: 100%;
 }
 
 h1 {
