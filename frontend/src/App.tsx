@@ -4,16 +4,22 @@ import axios from 'axios';
 import './App.css';
 import useAuraStore from './state/auraStore';
 import AuraCanvas from './components/AuraCanvas';
-import { createAudioRecorder } from './services/audio';
+import { createPcmStreamer } from './services/audioPcm';
 import { DeepgramRealtimeClient } from './services/deepgram';
 
 function TranscriptDisplay() {
   const transcript = useAuraStore((s) => s.transcript);
+  const interim = useAuraStore((s) => s.interimTranscript);
   return (
     <div style={{ position: 'absolute', top: 16, left: 16, right: 16, maxHeight: 180, overflowY: 'auto', background: 'rgba(255,255,255,0.08)', padding: 12, borderRadius: 12, backdropFilter: 'blur(6px)' }}>
       {transcript.map((line, idx) => (
         <div key={idx} style={{ color: 'white', opacity: 0.9, marginBottom: 4 }}>{line}</div>
       ))}
+      {interim ? (
+        <div style={{ color: 'white', opacity: 0.5, fontStyle: 'italic' }}>
+          {interim}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -44,35 +50,43 @@ function ControlBar() {
   const [recording, setRecording] = useState(false);
   const addTranscript = useAuraStore((s) => s.addTranscript);
   const setAnalysis = useAuraStore((s) => s.setAnalysis);
+  const setInterim = useAuraStore((s) => s.setInterim);
+  const clearInterim = useAuraStore((s) => s.clearInterim);
+  const setDeepgramConnected = useAuraStore((s) => s.setDeepgramConnected);
+  const setLastAnalysisNow = useAuraStore((s) => s.setLastAnalysisNow);
   const [dgClient] = useState<DeepgramRealtimeClient | null>(() => {
     const key = import.meta.env.VITE_DEEPGRAM_API_KEY as string | undefined;
     if (!key) return null;
     return new DeepgramRealtimeClient({
       apiKey: key,
-      sampleRate: 48000,
-      encoding: 'opus',
+      sampleRate: 16000,
+      encoding: 'linear16',
+      onOpen: () => setDeepgramConnected(true),
+      onClose: () => setDeepgramConnected(false),
       onTranscript: (text, isFinal) => {
         if (!isFinal) {
-          // optional: could show interim in UI; keeping UI minimal here
-          return;
+          setInterim(text);
+        } else {
+          clearInterim();
+          addTranscript(text);
+          const base = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+          axios
+            .post(`${base}/process_text`, { text })
+            .then((resp) => {
+              const { sentiment_score, sentiment_label, energy, keywords } = resp.data;
+              setAnalysis({ sentimentScore: sentiment_score, sentimentLabel: sentiment_label, energy, keywords });
+              setLastAnalysisNow();
+            })
+            .catch((e) => console.error(e));
         }
-        addTranscript(text);
-        // Call backend for analysis on final segments
-        const base = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
-        axios
-          .post(`${base}/process_text`, { text })
-          .then((resp) => {
-            const { sentiment_score, sentiment_label, energy, keywords } = resp.data;
-            setAnalysis({ sentimentScore: sentiment_score, sentimentLabel: sentiment_label, energy, keywords });
-          })
-          .catch((e) => console.error(e));
       },
     });
   });
   const [recorder] = useState(() =>
-    createAudioRecorder({
-      onData: (chunk) => {
-        dgClient?.sendAudioChunk(chunk);
+    createPcmStreamer({
+      targetSampleRate: 16000,
+      onPcm: (buffer) => {
+        dgClient?.sendAudioChunk(buffer);
       },
     })
   );
@@ -128,7 +142,11 @@ function AuraOverlay() {
   const sentimentScore = useAuraStore((s) => s.sentimentScore);
   const energy = useAuraStore((s) => s.energy);
   useEffect(() => {
-    document.body.style.background = `radial-gradient(1200px 800px at 50% 50%, rgba(0,150,255,${0.15 + energy * 0.2}), rgba(120,0,255,0.12))`;
+    const baseA = sentimentLabel === 'positive' ? [255, 160, 60] : sentimentLabel === 'negative' ? [60, 150, 255] : [150, 80, 255];
+    const baseB = sentimentLabel === 'positive' ? [255, 80, 160] : sentimentLabel === 'negative' ? [80, 200, 255] : [120, 60, 220];
+    const aAlpha = 0.12 + energy * 0.15;
+    const bAlpha = 0.1 + energy * 0.12;
+    document.body.style.background = `radial-gradient(1200px 800px at 50% 50%, rgba(${baseA[0]},${baseA[1]},${baseA[2]},${aAlpha}), rgba(${baseB[0]},${baseB[1]},${baseB[2]},${bAlpha}))`;
     return () => {
       document.body.style.background = '';
     };
@@ -136,11 +154,24 @@ function AuraOverlay() {
   return null;
 }
 
+function StatusBar() {
+  const deepgramConnected = useAuraStore((s) => s.deepgramConnected);
+  const lastAnalysisAt = useAuraStore((s) => s.lastAnalysisAt);
+  const label = deepgramConnected ? 'Deepgram: connected' : 'Deepgram: idle';
+  const last = lastAnalysisAt ? ` | Last analysis: ${new Date(lastAnalysisAt).toLocaleTimeString()}` : '';
+  return (
+    <div style={{ position: 'absolute', top: 16, left: 16, padding: '6px 10px', borderRadius: 999, background: 'rgba(0,0,0,0.25)', color: 'white', fontSize: 12 }}>
+      {label}{last}
+    </div>
+  );
+}
+
 function App() {
   return (
     <div style={{ minHeight: '100vh', position: 'relative' }}>
       <AuraCanvas />
       <AuraOverlay />
+      <StatusBar />
       <TranscriptDisplay />
       <KeywordCloud />
       <ControlBar />

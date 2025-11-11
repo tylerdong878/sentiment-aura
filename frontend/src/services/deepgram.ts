@@ -22,8 +22,8 @@ export class DeepgramRealtimeClient {
     if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
       return this.openPromise ?? Promise.resolve();
     }
-    const sampleRate = this.options.sampleRate ?? 48000;
-    const encoding = this.options.encoding ?? 'opus';
+    const sampleRate = this.options.sampleRate ?? 16000;
+    const encoding = this.options.encoding ?? 'linear16';
     const token = this.options.apiKey;
     // Use Deepgram token via subprotocols (recommended for browsers)
     const url = `wss://api.deepgram.com/v1/listen?encoding=${encoding}&sample_rate=${sampleRate}&vad_turnoff=2000&model=nova-2&punctuate=true`;
@@ -60,13 +60,13 @@ export class DeepgramRealtimeClient {
     return this.openPromise;
   }
 
-  async sendAudioChunk(blob: Blob) {
+  async sendAudioChunk(data: Blob | ArrayBuffer) {
     if (!this.ws) return;
     if (this.ws.readyState === WebSocket.CONNECTING) {
       await this.openPromise;
     }
     if (this.ws.readyState !== WebSocket.OPEN) return;
-    const buf = await blob.arrayBuffer();
+    const buf = data instanceof Blob ? await data.arrayBuffer() : data;
     this.ws.send(buf);
   }
 
