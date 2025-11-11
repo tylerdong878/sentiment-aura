@@ -4,6 +4,8 @@ import axios from 'axios';
 import './App.css';
 import useAuraStore from './state/auraStore';
 import AuraCanvas from './components/AuraCanvas';
+import { createAudioRecorder } from './services/audio';
+import { DeepgramRealtimeClient } from './services/deepgram';
 
 function TranscriptDisplay() {
   const transcript = useAuraStore((s) => s.transcript);
@@ -42,6 +44,38 @@ function ControlBar() {
   const [recording, setRecording] = useState(false);
   const addTranscript = useAuraStore((s) => s.addTranscript);
   const setAnalysis = useAuraStore((s) => s.setAnalysis);
+  const [dgClient] = useState<DeepgramRealtimeClient | null>(() => {
+    const key = import.meta.env.VITE_DEEPGRAM_API_KEY as string | undefined;
+    if (!key) return null;
+    return new DeepgramRealtimeClient({
+      apiKey: key,
+      sampleRate: 48000,
+      encoding: 'opus',
+      onTranscript: (text, isFinal) => {
+        if (!isFinal) {
+          // optional: could show interim in UI; keeping UI minimal here
+          return;
+        }
+        addTranscript(text);
+        // Call backend for analysis on final segments
+        const base = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+        axios
+          .post(`${base}/process_text`, { text })
+          .then((resp) => {
+            const { sentiment_score, sentiment_label, energy, keywords } = resp.data;
+            setAnalysis({ sentimentScore: sentiment_score, sentimentLabel: sentiment_label, energy, keywords });
+          })
+          .catch((e) => console.error(e));
+      },
+    });
+  });
+  const [recorder] = useState(() =>
+    createAudioRecorder({
+      onData: (chunk) => {
+        dgClient?.sendAudioChunk(chunk);
+      },
+    })
+  );
 
   async function mockSpeak() {
     const text = 'I am excited about building beautiful memory systems with this team!';
@@ -60,9 +94,22 @@ function ControlBar() {
     <div style={{ position: 'absolute', bottom: 16, left: 16, right: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
       <button
         onClick={() => {
-          setRecording((r) => !r);
           if (!recording) {
-            mockSpeak();
+            (async () => {
+              if (dgClient) {
+                await dgClient.connect();
+              }
+              await recorder.start();
+              setRecording(true);
+              if (!dgClient) {
+                // Fallback demo if Deepgram key not set
+                mockSpeak();
+              }
+            })();
+          } else {
+            recorder.stop();
+            dgClient?.close();
+            setRecording(false);
           }
         }}
         style={{ padding: '10px 16px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.2)', color: 'white', background: recording ? 'rgba(255,60,60,0.4)' : 'rgba(60,255,120,0.3)' }}
