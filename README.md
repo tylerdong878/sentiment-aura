@@ -338,6 +338,33 @@ VITE_DEEPGRAM_API_KEY=your_deepgram_key_here
 - **16kHz PCM**: Raw audio format required by Deepgram
 - **Fallback Support**: ScriptProcessorNode for older browsers
 
+### Async Management & Error Handling
+
+#### LLM API Slow/Timeout Handling
+- **Backend Timeout**: 15-second timeout on LLM API calls (httpx.AsyncClient)
+- **Frontend Timeout**: 20-second timeout on frontend requests (prevents indefinite waiting)
+- **Graceful Fallback**: If LLM API fails or times out:
+  - Backend falls back to heuristic-based sentiment analysis
+  - Frontend falls back to neutral sentiment (0.5) if backend fails
+  - App continues functioning - no crashes or broken states
+- **Error Logging**: All errors logged to console for debugging
+- **User Feedback**: "Processing..." indicator shows during analysis, disappears on completion or error
+
+#### WebSocket Disconnection Handling
+- **Automatic Reconnection**: Deepgram WebSocket automatically reconnects on disconnect
+- **Exponential Backoff**: Reconnection attempts use exponential backoff (1s, 2s, 4s, 8s, 16s)
+- **Max Attempts**: Up to 5 reconnection attempts before giving up
+- **Connection Status**: UI shows "Connected" or "Idle" status with visual indicator
+- **Manual Stop**: Reconnection disabled when user manually stops recording
+- **Error Recovery**: Connection resets on successful reconnect (attempt counter resets)
+
+#### Error States
+- **Network Errors**: Handled gracefully with fallback responses
+- **API Errors**: Backend catches and logs all API errors, returns fallback
+- **Timeout Errors**: Both frontend and backend handle timeouts appropriately
+- **WebSocket Errors**: Reconnection logic handles temporary network issues
+- **No User Impact**: All errors handled silently - app never breaks or shows error screens
+
 ## 📊 Assessment Criteria Coverage
 
 This project demonstrates:
@@ -348,7 +375,11 @@ This project demonstrates:
 
 ✅ **Frontend Polish**: Smooth color transitions, graceful keyword animations, auto-scrolling transcripts, polished UI with attention to detail
 
-✅ **Async Management & Error Handling**: Graceful fallbacks for API failures, connection status indicators, processing states
+✅ **Async Management & Error Handling**: 
+  - **LLM API Timeouts**: 15s backend timeout, 20s frontend timeout with graceful fallbacks
+  - **WebSocket Reconnection**: Automatic reconnection with exponential backoff (up to 5 attempts)
+  - **Error Recovery**: All errors handled gracefully - app never breaks, always has fallback responses
+  - **User Feedback**: Connection status indicators, processing states, error logging
 
 ## 🎬 Demo Tips
 

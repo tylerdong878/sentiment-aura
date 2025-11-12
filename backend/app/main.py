@@ -103,12 +103,22 @@ async def _analyze_with_openrouter(text: str) -> dict:
         "temperature": 0.2,
         "response_format": {"type": "json_object"},
     }
-    async with httpx.AsyncClient(timeout=15) as client:
-        r = await client.post(OPENROUTER_URL, headers=headers, json=payload)
-        r.raise_for_status()
-        data = r.json()
-        content = data["choices"][0]["message"]["content"]
-        return json.loads(content)
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            r = await client.post(OPENROUTER_URL, headers=headers, json=payload)
+            r.raise_for_status()
+            data = r.json()
+            content = data["choices"][0]["message"]["content"]
+            return json.loads(content)
+    except httpx.TimeoutException:
+        print("OpenRouter API timeout after 15 seconds")
+        raise
+    except httpx.HTTPStatusError as e:
+        print(f"OpenRouter API error: {e.response.status_code} - {e.response.text}")
+        raise
+    except Exception as e:
+        print(f"Unexpected error calling OpenRouter: {e}")
+        raise
 
 
 async def _analyze_with_groq(text: str) -> dict:
@@ -132,11 +142,21 @@ async def _analyze_with_groq(text: str) -> dict:
         "temperature": 0.2,
         "response_format": {"type": "json_object"},
     }
-    async with httpx.AsyncClient(timeout=15) as client:
-        r = await client.post(GROQ_URL, headers=headers, json=payload)
-        r.raise_for_status()
-        data = r.json()
-        content = data["choices"][0]["message"]["content"]
-        return json.loads(content)
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            r = await client.post(GROQ_URL, headers=headers, json=payload)
+            r.raise_for_status()
+            data = r.json()
+            content = data["choices"][0]["message"]["content"]
+            return json.loads(content)
+    except httpx.TimeoutException:
+        print("Groq API timeout after 15 seconds")
+        raise
+    except httpx.HTTPStatusError as e:
+        print(f"Groq API error: {e.response.status_code} - {e.response.text}")
+        raise
+    except Exception as e:
+        print(f"Unexpected error calling Groq: {e}")
+        raise
 
 

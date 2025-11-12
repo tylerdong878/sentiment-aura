@@ -263,8 +263,14 @@ function ControlBar() {
           addTranscript(text);
           setIsProcessing(true);
           const base = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
-          axios
-            .post(`${base}/process_text`, { text })
+          // Add timeout for slow API responses (20 seconds)
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Request timeout - LLM API is slow or unresponsive')), 20000)
+          );
+          Promise.race([
+            axios.post<{ sentiment_score: number; sentiment_label: string; energy: number; keywords: string[] }>(`${base}/process_text`, { text }),
+            timeoutPromise as Promise<never>
+          ])
             .then((resp) => {
               const { sentiment_score, sentiment_label, energy, keywords } = resp.data;
               setAnalysis({ sentimentScore: sentiment_score, sentimentLabel: sentiment_label, energy, keywords });
@@ -272,7 +278,14 @@ function ControlBar() {
               setIsProcessing(false);
             })
             .catch((e) => {
-              console.error(e);
+              console.error('Backend API error:', e);
+              // Fallback: use neutral sentiment if API fails
+              setAnalysis({ 
+                sentimentScore: 0.5, 
+                sentimentLabel: 'neutral', 
+                energy: 0.4, 
+                keywords: [] 
+              });
               setIsProcessing(false);
             });
         }
