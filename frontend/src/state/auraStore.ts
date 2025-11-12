@@ -9,7 +9,7 @@ type AuraState = {
   interimTranscript: string;
   deepgramConnected: boolean;
   lastAnalysisAt: number | null;
-  vizMode: 'particles' | 'ribbons' | 'nebula' | 'comets' | 'charcoal' | 'flames' | 'stars';
+  vizMode: 'particles' | 'ribbons' | 'nebula' | 'comets' | 'charcoal' | 'flames' | 'aurora' | 'watercolor' | 'ink' | 'fiber' | 'sparkles' | 'waves' | 'smoke' | 'plasma' | 'magnetic' | 'crystals' | 'lava' | 'tendrils' | 'marbling' | 'silk' | 'bloom' | 'lace' | 'fireworks' | 'mist' | 'rivers';
   palette: 'auto' | 'warm' | 'cool' | 'pastel' | 'monochrome' | 'autumn';
   addTranscript: (chunk: string) => void;
   setAnalysis: (p: { sentimentScore: number; sentimentLabel: string; energy: number; keywords: string[] }) => void;
@@ -17,7 +17,7 @@ type AuraState = {
   clearInterim: () => void;
   setDeepgramConnected: (v: boolean) => void;
   setLastAnalysisNow: () => void;
-  setVizMode: (m: 'particles' | 'ribbons' | 'nebula' | 'comets' | 'charcoal' | 'flames' | 'stars') => void;
+  setVizMode: (m: 'particles' | 'ribbons' | 'nebula' | 'comets' | 'charcoal' | 'flames' | 'aurora' | 'watercolor' | 'ink' | 'fiber' | 'sparkles' | 'waves' | 'smoke' | 'plasma' | 'magnetic' | 'crystals' | 'lava' | 'tendrils' | 'marbling' | 'silk' | 'bloom' | 'lace' | 'fireworks' | 'mist' | 'rivers') => void;
   setPalette: (p: 'auto' | 'warm' | 'cool' | 'pastel' | 'monochrome' | 'autumn') => void;
 };
 
